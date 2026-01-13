@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>いもうとのももはとじゃんけんすることになった</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kiwi Maru', serif;
+            background-color: #fff0f6;
+            color: #d6336c;
+            overflow: hidden;
+            user-select: none;
+        }
+        .btn-pink {
+            background-color: #ffdeeb;
+            border: 2px solid #fcc2d7;
+            color: #d6336c;
+            transition: all 0.2s;
+            border-radius: 9999px;
+            box-shadow: 0 4px 0 #fcc2d7;
+        }
+        .btn-pink:hover:not(:disabled) {
+            background-color: #fcc2d7;
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #fcc2d7;
+        }
+        .btn-pink:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        .btn-pink:disabled {
+            background-color: #e5e7eb;
+            border-color: #d1d5db;
+            color: #9ca3af;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .screen {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .screen.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .character-img {
+            max-height: 90vh;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+        }
+        .heart {
+            font-size: 3rem;
+            color: #ff4d6d;
+            margin: 0 4px;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+        }
+        .message-window {
+            background: rgba(255, 255, 255, 0.9);
+            border: 4px solid #fcc2d7;
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .gallery-slide-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+        }
+        .gallery-image {
+            max-width: 80%;
+            max-height: 75vh;
+            object-fit: contain;
+            border: 10px solid white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- タイトル画面 -->
+    <div id="screen-title" class="screen active flex-col items-center justify-center space-y-6">
+        <h1 class="text-5xl font-bold mb-8 text-pink-500 drop-shadow-md text-center leading-relaxed">
+            いもうとの<span class="text-pink-600 px-2 drop-shadow-[0_2px_2px_rgba(214,51,108,0.4)]">ももは</span>と<br class="sm:hidden">じゃんけんすることになった
+        </h1>
+        <button onclick="showScreen('select-place-game')" class="btn-pink px-12 py-4 text-xl w-64">あそぶ</button>
+        <button onclick="showScreen('settings')" class="btn-pink px-12 py-4 text-xl w-64">せってい</button>
+        <button onclick="showScreen('select-place-gallery')" class="btn-pink px-12 py-4 text-xl w-64">ぎゃらりー</button>
+        <button onclick="exitGame()" class="btn-pink px-12 py-4 text-xl w-64">おわる</button>
+    </div>
+
+    <!-- 場所選択画面 (ゲーム用) -->
+    <div id="screen-select-place-game" class="screen flex-col items-center justify-center space-y-10">
+        <h2 class="text-4xl font-bold">どこであそびますか？</h2>
+        <div class="flex space-x-6">
+            <button onclick="startGame(1)" class="btn-pink w-40 py-6 text-2xl">おへや</button>
+            <button onclick="startGame(2)" class="btn-pink w-40 py-6 text-2xl">きょうしつ</button>
+            <button onclick="startGame(3)" class="btn-pink w-40 py-6 text-2xl">こうえん</button>
+        </div>
+        <button onclick="showScreen('title')" class="btn-pink px-12 py-3 mt-12">もどる</button>
+    </div>
+
+    <!-- ジャンケン画面 -->
+    <div id="screen-game" class="screen flex-row">
+        <div class="w-1/2 flex items-center justify-center bg-white/50 relative">
+            <div id="char-container" class="text-center">
+                <img id="main-character" src="" onerror="this.src='https://via.placeholder.com/400x600?text=Momoha'" class="character-img" alt="ももは">
+            </div>
+        </div>
+
+        <div class="w-1/2 flex flex-col p-8 relative">
+            <button onclick="showScreen('title')" class="absolute top-4 right-4 btn-pink px-6 py-2 z-10">もどる</button>
+
+            <!-- ももはライフ（上） -->
+            <div class="flex flex-col items-center mb-6">
+                <p class="font-bold text-lg mb-2">ももはのライフ</p>
+                <div id="cpu-hearts" class="flex"></div>
+            </div>
+
+            <!-- メインコンテンツ -->
+            <div class="flex-1 flex flex-col items-center justify-center space-y-8">
+                <div id="result-display" class="flex items-center space-x-12 h-24 invisible">
+                    <div id="cpu-hand" class="text-6xl">✊</div>
+                    <div class="text-3xl font-black">VS</div>
+                    <div id="player-hand" class="text-6xl">✊</div>
+                </div>
+
+                <div id="msg-window-container" class="message-window shadow-inner">
+                    <p id="game-message" class="text-2xl font-bold">これからはじめるよ？</p>
+                    <div class="flex justify-end">
+                        <button id="next-btn" onclick="nextStep()" class="btn-pink px-8 py-2 text-lg">すすむ</button>
+                    </div>
+                </div>
+
+                <div id="controls" class="flex space-x-6 opacity-30 pointer-events-none transition-opacity">
+                    <button onclick="play(0)" class="btn-pink w-24 h-24 flex flex-col items-center justify-center">
+                        <span class="text-4xl">✊</span>
+                        <span class="font-bold mt-1">グー</span>
+                    </button>
+                    <button onclick="play(1)" class="btn-pink w-24 h-24 flex flex-col items-center justify-center">
+                        <span class="text-4xl">✌️</span>
+                        <span class="font-bold mt-1">チョキ</span>
+                    </button>
+                    <button onclick="play(2)" class="btn-pink w-24 h-24 flex flex-col items-center justify-center">
+                        <span class="text-4xl">✋</span>
+                        <span class="font-bold mt-1">パー</span>
+                    </button>
+                </div>
+
+                <div id="game-over-area" class="hidden text-center space-y-6">
+                    <h2 id="final-result-text" class="text-4xl font-bold text-pink-600"></h2>
+                    <p id="final-sub-text" class="text-xl"></p>
+                    <button onclick="resetGame()" class="btn-pink px-12 py-4 text-xl">もういちど遊ぶ</button>
+                </div>
+            </div>
+
+            <!-- プレイヤーライフ（下） -->
+            <div class="flex flex-col items-center mt-6">
+                <div id="player-hearts" class="flex"></div>
+                <p class="font-bold text-lg mt-2">あなたのライフ</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定画面 -->
+    <div id="screen-settings" class="screen flex-col items-center justify-center space-y-8">
+        <h2 class="text-4xl font-bold">せってい</h2>
+        <div class="flex flex-col space-y-4 w-80">
+            <button id="btn-mode-normal" onclick="setMode('normal')" class="btn-pink py-4 text-xl border-4">つうじょう</button>
+            <button id="btn-mode-player" onclick="setMode('player')" class="btn-pink py-4 text-xl">ぷれいやーがかつ</button>
+            <button id="btn-mode-cousin" onclick="setMode('cousin')" class="btn-pink py-4 text-xl">ももはがかつ</button>
+        </div>
+        <button onclick="showScreen('title')" class="btn-pink px-12 py-3 mt-8">もどる</button>
+    </div>
+
+    <!-- ギャラリー選択画面 -->
+    <div id="screen-select-place-gallery" class="screen flex-col items-center justify-center space-y-10">
+        <h2 class="text-4xl font-bold">どのぎゃらりーをみますか？</h2>
+        <div class="flex space-x-6">
+            <button id="gal-btn-1" onclick="openGallery(1)" class="btn-pink w-40 py-6 text-2xl">おへや</button>
+            <button id="gal-btn-2" onclick="openGallery(2)" class="btn-pink w-40 py-6 text-2xl">きょうしつ</button>
+            <button id="gal-btn-3" onclick="openGallery(3)" class="btn-pink w-40 py-6 text-2xl">こうえん</button>
+        </div>
+        <button onclick="showScreen('title')" class="btn-pink px-12 py-3 mt-12">もどる</button>
+    </div>
+
+    <!-- ギャラリー画面 (スライド) -->
+    <div id="screen-gallery" class="screen flex-col items-center p-8">
+        <div class="flex justify-between w-full max-w-6xl mb-4 z-10">
+            <h2 id="gallery-title" class="text-4xl font-bold">ぎゃらりー</h2>
+            <button onclick="showScreen('select-place-gallery')" class="btn-pink px-8 py-2">場所をえらびなおす</button>
+        </div>
+        <div class="flex-1 w-full max-w-6xl">
+            <div class="gallery-slide-container">
+                <button onclick="prevOmake()" class="nav-btn btn-pink left-8 w-16 h-16 text-3xl">←</button>
+                <div class="flex flex-col items-center">
+                    <img id="omake-display" src="" class="gallery-image" alt="おまけイラスト">
+                    <p id="omake-label" class="mt-4 text-3xl font-bold text-pink-600">No. 0</p>
+                </div>
+                <button onclick="nextOmake()" class="nav-btn btn-pink right-8 w-16 h-16 text-3xl">→</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            playerLife: 5,
+            cpuLife: 5,
+            wins: 0,
+            difficulty: 'normal',
+            unlockedPlaces: { 1: false, 2: false, 3: false },
+            currentPlace: 1,
+            step: 'start',
+            currentOmakeIdx: 0,
+            dialogueIdx: 0 // 現在のセリフ番号
+        };
+
+        const hands = ['✊', '✌️', '✋'];
+        const placeNames = { 1: 'おへや', 2: 'きょうしつ', 3: 'こうえん' };
+
+        // 場所ごとのイントロセリフ
+        const introDialogues = {
+            1: [
+                "おにいちゃん。ようこそあたしのへやに",
+                "また、むかしのようにじゃんけんしようね",
+                "はじめるけどいい？"
+            ],
+            2: [
+                "えっ！がっこうまできたの？",
+                "ともだちがみてるかもしれないよ",
+                "しょうがないな～"
+            ],
+            3: [
+                "ここならしずかだしへいきだよね？",
+                "まわりにだれもいなそうだね！",
+                "じゃあ、はじめようか"
+            ]
+        };
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + screenId).classList.add('active');
+            
+            if (screenId === 'select-place-gallery') {
+                updatePlaceButtons();
+            }
+        }
+
+        function startGame(place) {
+            state.currentPlace = place;
+            state.dialogueIdx = 0; // セリフを最初からにする
+            state.step = 'intro';  // イントロモードにする
+            resetGameUI(); 
+            showScreen('game');
+            updateDialogue(); // 最初のセリフを表示
+        }
+
+        function updateDialogue() {
+            const currentList = introDialogues[state.currentPlace];
+            const msgEl = document.getElementById('game-message');
+            msgEl.textContent = currentList[state.dialogueIdx];
+        }
+
+        function setMode(mode) {
+            state.difficulty = mode;
+            const modes = ['normal', 'player', 'cousin'];
+            modes.forEach(m => {
+                const btn = document.getElementById('btn-mode-' + m);
+                btn.style.borderWidth = (m === mode) ? '4px' : '2px';
+                btn.style.borderColor = (m === mode) ? '#f472b6' : '#fcc2d7';
+            });
+            resetGame();
+        }
+
+        function nextStep() {
+            const msgEl = document.getElementById('game-message');
+            const controls = document.getElementById('controls');
+            const nextBtn = document.getElementById('next-btn');
+
+            // イントロ中
+            if (state.step === 'intro') {
+                state.dialogueIdx++;
+                const currentList = introDialogues[state.currentPlace];
+                
+                if (state.dialogueIdx < currentList.length) {
+                    updateDialogue();
+                } else {
+                    // セリフが終わったらじゃんけん開始
+                    state.step = 'start';
+                    msgEl.textContent = "じゃんけ～ん";
+                    state.step = 'ready';
+                    controls.style.opacity = "1";
+                    controls.style.pointerEvents = "auto";
+                    nextBtn.disabled = true;
+                    document.getElementById('result-display').classList.add('invisible');
+                }
+                return;
+            }
+
+            // ゲーム中のフロー
+            if (state.step === 'start' || state.step === 'result') {
+                if (state.playerLife <= 0 || state.cpuLife <= 0) {
+                    endGame();
+                    return;
+                }
+                msgEl.textContent = "じゃんけ～ん";
+                state.step = 'ready';
+                controls.style.opacity = "1";
+                controls.style.pointerEvents = "auto";
+                nextBtn.disabled = true;
+                document.getElementById('result-display').classList.add('invisible');
+            }
+        }
+
+        function play(playerIdx) {
+            let cpuIdx;
+            if (state.difficulty === 'player') cpuIdx = (playerIdx + 1) % 3;
+            else if (state.difficulty === 'cousin') cpuIdx = (playerIdx + 2) % 3;
+            else cpuIdx = Math.floor(Math.random() * 3);
+
+            document.getElementById('player-hand').textContent = hands[playerIdx];
+            document.getElementById('cpu-hand').textContent = hands[cpuIdx];
+            document.getElementById('result-display').classList.remove('invisible');
+
+            const msgEl = document.getElementById('game-message');
+            const nextBtn = document.getElementById('next-btn');
+            const controls = document.getElementById('controls');
+
+            controls.style.opacity = "0.3";
+            controls.style.pointerEvents = "none";
+            nextBtn.disabled = false;
+            state.step = 'result';
+
+            if (playerIdx === cpuIdx) {
+                msgEl.textContent = "あいこ！もう一回！";
+            } else if ((playerIdx === 0 && cpuIdx === 1) || (playerIdx === 1 && cpuIdx === 2) || (playerIdx === 2 && cpuIdx === 0)) {
+                msgEl.textContent = "あーあ、まけちゃった";
+                state.cpuLife--;
+                state.wins++;
+                updateHearts();
+                updateCharacter();
+            } else {
+                msgEl.textContent = "あたしのかちだね！";
+                state.playerLife--;
+                updateHearts();
+            }
+        }
+
+        function updateHearts() {
+            const cpuH = document.getElementById('cpu-hearts');
+            const plyH = document.getElementById('player-hearts');
+            cpuH.innerHTML = Array(5).fill(0).map((_, i) => `<span class="heart">${i < state.cpuLife ? '❤️' : '🤍'}</span>`).join('');
+            plyH.innerHTML = Array(5).fill(0).map((_, i) => `<span class="heart">${i < state.playerLife ? '❤️' : '🤍'}</span>`).join('');
+        }
+
+        function updateCharacter() {
+            const img = document.getElementById('main-character');
+            const winIdx = Math.min(state.wins, 6);
+            img.src = `${state.currentPlace}-${winIdx}.png`;
+        }
+
+        function endGame() {
+            state.step = 'end';
+            document.getElementById('msg-window-container').classList.add('hidden');
+            document.getElementById('controls').classList.add('hidden');
+            document.getElementById('game-over-area').classList.remove('hidden');
+            
+            const title = document.getElementById('final-result-text');
+            const sub = document.getElementById('final-sub-text');
+
+            if (state.cpuLife <= 0) {
+                title.textContent = "おめでとう！全勝だよ！";
+                sub.textContent = `${placeNames[state.currentPlace]}のギャラリーが解放されたよ！`;
+                state.unlockedPlaces[state.currentPlace] = true;
+            } else {
+                title.textContent = "ざんねん...";
+                sub.textContent = "また挑戦してね！";
+            }
+        }
+
+        // 変数の初期化
+        function resetGameUI() {
+            state.playerLife = 5;
+            state.cpuLife = 5;
+            state.wins = 0;
+            updateHearts();
+            updateCharacter();
+            document.getElementById('msg-window-container').classList.remove('hidden');
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('game-over-area').classList.add('hidden');
+            document.getElementById('result-display').classList.add('invisible');
+            document.getElementById('controls').classList.remove('hidden');
+            document.getElementById('controls').style.opacity = "0.3";
+            document.getElementById('controls').style.pointerEvents = "none";
+        }
+
+        function resetGame() {
+            state.step = 'start';
+            resetGameUI();
+            document.getElementById('game-message').textContent = "これからはじめるよ？";
+        }
+
+        function updatePlaceButtons() {
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`gal-btn-${i}`);
+                btn.disabled = !state.unlockedPlaces[i];
+            }
+        }
+
+        function openGallery(place) {
+            state.currentPlace = place;
+            state.currentOmakeIdx = 0;
+            document.getElementById('gallery-title').textContent = `${placeNames[place]}のぎゃらりー`;
+            showScreen('gallery');
+            showOmake();
+        }
+
+        function showOmake() {
+            const img = document.getElementById('omake-display');
+            const label = document.getElementById('omake-label');
+            const p = state.currentPlace;
+            const i = state.currentOmakeIdx;
+            
+            let fileName = `omake${p}-${i}.png`;
+            img.src = fileName;
+            img.onerror = () => img.src = `https://via.placeholder.com/800x600?text=${placeNames[p]}+Omake+${i}`;
+            label.textContent = `No. ${i}`;
+        }
+
+        function nextOmake() {
+            state.currentOmakeIdx = (state.currentOmakeIdx + 1) % 15;
+            showOmake();
+        }
+
+        function prevOmake() {
+            state.currentOmakeIdx = (state.currentOmakeIdx - 1 + 15) % 15;
+            showOmake();
+        }
+
+        function exitGame() {
+            if (window.close) window.close();
+            else alert("ゲームを終了します");
+        }
+
+        setMode('normal');
+    </script>
+</body>
+</html>
